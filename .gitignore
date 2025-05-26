@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.log
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+.venv.bak/
+env.bak/
+.env
+
+# VSCode
+.vscode/
+.history/
+
+# IDEs
+.idea/
+*.swp
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Configs sensíveis
+.env
+.env.*
+*.local
+*.secret
+
+# Cache
+.cache/
+*.db
+*.sqlite3
+
+# Testes
+coverage.xml
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Supabase (se você estiver usando o CLI localmente)
+.supabase/
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.orig
+
+# Node (caso use algo no front ou em testes)
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
