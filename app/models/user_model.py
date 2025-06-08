@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import date
 
-class UserCreate(BaseModel):
+class User(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None

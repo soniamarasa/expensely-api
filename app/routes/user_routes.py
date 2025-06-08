@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 from app.services import users_service
-from app.models.user_model import UserCreate
+from app.models.user_model import User
 from typing import Dict
 
 router = APIRouter()
 
 @router.post("/user")
-def create_user(user: UserCreate):
+def create_user(user: User):
     return users_service.create_user(user.dict())
 
 @router.get("/users")
