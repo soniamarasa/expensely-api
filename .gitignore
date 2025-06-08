@@ -17,7 +17,8 @@ env/
 ENV/
 .venv.bak/
 env.bak/
-.env
+.env/
+env
 
 # VSCode
 .vscode/
