@@ -6,7 +6,7 @@ class TagBase(BaseModel):
     color: Optional[str] = None
 
 class TagCreate(TagBase):
-    pass
+    workspace_id: str
 
 class Tag(TagBase):
     id: str

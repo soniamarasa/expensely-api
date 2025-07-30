@@ -1,67 +1,60 @@
+from sqlalchemy.orm import Session
+from uuid import uuid4
 from typing import List
-from app.db.supabase_client import supabase
+from app.models import Tag as TagModel
 from app.schemas.tag_schema import TagCreate, Tag
 from app.services.workspaces_service import user_has_access_to_workspace
 
 
-def create_tag_service(tag: TagCreate, user_id: str) -> Tag:
-    if not user_has_access_to_workspace(user_id, tag.workspaceId):
+def create_tag_service(tag: TagCreate, user_id: str, db: Session) -> Tag:
+    if not user_has_access_to_workspace(user_id, tag.workspace_id, db):
         raise Exception("Usuário não tem acesso a este workspace.")
 
-    data = tag.dict()
-    data["userId"] = user_id
-
-    response = supabase.table("tags").insert(data).execute()
-    if response.status_code != 201:
-        raise Exception("Erro ao criar tag")
-    return Tag(**response.data[0])
-
-
-def get_tags_by_workspace(workspace_id: str, user_id: str) -> List[Tag]:
-    if not user_has_access_to_workspace(user_id, workspace_id):
-        raise Exception("Usuário não tem acesso a este workspace.")
-
-    response = (
-        supabase.table("tags").select("*").eq("workspaceId", workspace_id).execute()
+    new_tag = TagModel(
+        id=str(uuid4()),
+        name=tag.name,
+        color=tag.color,
+        user_id=user_id,
+        workspace_id=tag.workspace_id, 
     )
-    if response.status_code != 200:
-        raise Exception("Erro ao buscar tags")
-    return [Tag(**item) for item in response.data]
+    db.add(new_tag)
+    db.commit()
+    db.refresh(new_tag)
+    return Tag.from_orm(new_tag)
 
-def update_tag_service(tag_id: str, tag: TagCreate, user_id: str) -> Tag:
-    # Busca a tag atual
-    tag_resp = supabase.table("tags").select("*").eq("id", tag_id).single().execute()
-    if not tag_resp.data:
+
+def get_tags_by_workspace(workspace_id: str, user_id: str, db: Session) -> List[Tag]:
+    if not user_has_access_to_workspace(user_id, workspace_id, db):
+        raise Exception("Usuário não tem acesso a este workspace.")
+
+    tags = db.query(TagModel).filter(TagModel.workspace_id == workspace_id).all()
+    return [Tag.from_orm(tag) for tag in tags]
+
+
+def update_tag_service(tag_id: str, tag_data: TagCreate, user_id: str, db: Session) -> Tag:
+    tag = db.query(TagModel).filter(TagModel.id == tag_id).first()
+    if not tag:
         raise Exception("Tag não encontrada.")
 
-    tag_data = tag_resp.data
-
-    # Valida acesso ao workspace
-    if not user_has_access_to_workspace(user_id, tag_data["workspaceId"]):
+    if not user_has_access_to_workspace(user_id, tag.workspace_id, db):
         raise Exception("Usuário não tem acesso a este workspace.")
 
-    # Prepara os dados para atualizar, mantendo o userId original
-    data = tag.dict()
-    data["userId"] = tag_data["userId"]
+    tag.name = tag_data.name
+    tag.color = tag_data.color
 
-    response = supabase.table("tags").update(data).eq("id", tag_id).execute()
-    if response.status_code != 200:
-        raise Exception("Erro ao atualizar tag")
-    return Tag(**response.data[0])
+    db.commit()
+    db.refresh(tag)
+    return Tag.from_orm(tag)
 
 
-def delete_tag(tag_id: str, user_id: str) -> dict:
-    tag = (
-        supabase.table("tags").select("workspaceId").eq("id", tag_id).single().execute()
-    )
-    if not tag.data:
+def delete_tag(tag_id: str, user_id: str, db: Session) -> dict:
+    tag = db.query(TagModel).filter(TagModel.id == tag_id).first()
+    if not tag:
         raise Exception("Tag não encontrada.")
 
-    workspace_id = tag.data["workspaceId"]
-    if not user_has_access_to_workspace(user_id, workspace_id):
+    if not user_has_access_to_workspace(user_id, tag.workspace_id, db):
         raise Exception("Usuário não tem acesso a este workspace.")
 
-    response = supabase.table("tags").delete().eq("id", tag_id).execute()
-    if response.status_code != 200:
-        raise Exception("Erro ao deletar tag.")
+    db.delete(tag)
+    db.commit()
     return {"detail": "Tag deletada com sucesso"}

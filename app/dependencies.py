@@ -1,36 +1,41 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from app.db.supabase_client import supabase 
+from sqlalchemy.orm import Session
 from app.models.user_model import User
 from app.schemas.schemas import TokenData
 from app.config import SECRET_KEY, ALGORITHM
+from app.database import get_db
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=True)
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User:
+    print("get_current_user chamado")
+    print("Token recebido:", token)
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não foi possível validar as credenciais.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        print("Payload:", payload)
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
+        user_id = int(user_id_str)
+    except (JWTError, ValueError) as e:
+        print("Erro no JWT:", str(e))
         raise credentials_exception
 
-    
-    response = supabase.table("users").select("*").eq("username", token_data.username).execute()
-    
- 
-    if not response.data or len(response.data) == 0:
+    user = db.query(User).filter(User.id == user_id).first()
+    print("Usuário do banco:", user)
+    if user is None:
         raise credentials_exception
 
-    user_data = response.data[0]
-
-    user = User(**user_data)
     return user
