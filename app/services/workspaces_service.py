@@ -68,7 +68,6 @@ def delete_workspace(workspace_id: int, current_user: UserModel, db: Session):
         raise HTTPException(
             status_code=403, detail="Apenas o dono pode deletar o workspace"
         )
-
  
     stmt = delete(workspace_users).where(workspace_users.c.workspace_id == workspace.id)
     db.execute(stmt)

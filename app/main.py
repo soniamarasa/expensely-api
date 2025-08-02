@@ -13,10 +13,9 @@ from app.routes import (
 app = FastAPI(
     title="Expensely API",
     version="1.0.0",
-    description="Backend da aplicação Expensely com autenticação JWT e PostgreSQL.",
+    description="Backend da aplicação Expensely.",
 )
 
-# CORS - ajuste conforme necessário
 origins = [
     "http://localhost:5173",  # Front-end local
 ]
