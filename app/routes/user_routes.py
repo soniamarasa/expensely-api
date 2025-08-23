@@ -1,20 +1,17 @@
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from typing import Dict, List
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+
 from app.database import get_db
-from pytest import Session
 from app.config import SECRET_KEY, ALGORITHM
 from app.dependencies import get_current_user
 from app.models.user_model import User
-from app.schemas import UserCreate, UserOut
-from app.schemas.user_schema import PasswordChange
+from app.schemas.user_schema import UserCreate, UserOut, PasswordChange
 from app.services import users_service
 
-from fastapi import Request
-
 router = APIRouter()
-
-from fastapi.security import OAuth2PasswordBearer
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 
@@ -33,7 +30,7 @@ def get_all_users(
 
 @router.get("/user/{user_id}", response_model=UserOut)
 def get_user(
-    user_id: int,
+    user_id: str,  # UUID agora é string
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -42,7 +39,7 @@ def get_user(
 
 @router.put("/user/{user_id}", response_model=UserOut)
 def update_user(
-    user_id: int,
+    user_id: str,  # UUID agora é string
     new_data: Dict = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -61,11 +58,9 @@ def change_password(body: Dict = Body(...), db: Session = Depends(get_db)):
         )
 
     # Decodifica o token para pegar o user_id
-    from jose import jwt, JWTError
-
     try:
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload.get("sub"))
+        user_id = payload.get("sub")  # UUID string, não usar int()
         if user_id is None:
             raise HTTPException(status_code=401, detail="Token inválido")
     except JWTError:
@@ -83,7 +78,6 @@ def send_password_reset_request(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     frontend_host = request.headers.get("origin")  # pega o host do front
-
     if not frontend_host:
         raise HTTPException(status_code=400, detail="Host do frontend não informado")
 

@@ -1,36 +1,45 @@
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
+from uuid import UUID
+
+
+class WorkspaceType(BaseModel):
+    id: str
+    name: str
+    icon: Optional[str] = None
 
 
 class WorkspaceUser(BaseModel):
-    id: str
+    id: UUID
     name: str
     email: Optional[EmailStr]
 
     class Config:
-        orm_mode = True  # precisa para funcionar com objetos SQLAlchemy
+        orm_mode = True
 
 
 class WorkspaceBase(BaseModel):
     name: str
     color: str
-    type: str
+    icon: Optional[str] = None
+    type: WorkspaceType
 
 
 class WorkspaceCreate(WorkspaceBase):
-    users: Optional[List[str]] = []  # IDs dos usuários para associação
+    users: Optional[List[UUID]] = []
 
 
 class WorkspaceUpdate(BaseModel):
     name: Optional[str]
     color: Optional[str]
-    type: Optional[str]
-    users: Optional[List[str]] = []
+    icon: Optional[str] = None
+    type: Optional[WorkspaceType] = None
+    users: Optional[List[UUID]] = []
 
 
 class Workspace(WorkspaceBase):
-    id: str
-    userId: str
+    id: UUID
+    userId: UUID
     users: List[WorkspaceUser]
 
     class Config:

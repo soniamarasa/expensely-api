@@ -34,7 +34,7 @@ class UserCreate(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: int
+    id: str                 
     email: EmailStr
     name: Optional[str]
     username: Optional[str]
@@ -44,7 +44,6 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
-
 
 class PasswordChange(BaseModel):
     currentPassword: str = Field(..., min_length=6)

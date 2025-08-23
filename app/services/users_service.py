@@ -12,22 +12,30 @@ from sqlalchemy.exc import IntegrityError
 from app.config import pwd_context
 from app.schemas.user_schema import PasswordChange
 from app.utils.hash import get_password_hash
+from uuid import uuid4
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
-
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
     return db.query(User).filter(User.email == email).first()
 
+def get_user_by_id(db: Session, user_id: str) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user
+
+
+def get_all_users(db: Session):
+    return db.query(User).all()
+
 
 def create_user(user_data: dict):
     db: Session = SessionLocal()
-
     try:
         # Verifica duplicidade de email
         if db.query(User).filter(User.email == user_data["email"]).first():
@@ -37,7 +45,10 @@ def create_user(user_data: dict):
             )
 
         # Verifica duplicidade de username
-        if db.query(User).filter(User.username == user_data["username"]).first():
+        if (
+            user_data.get("username")
+            and db.query(User).filter(User.username == user_data["username"]).first()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Este nome de usuário já está em uso.",
@@ -46,7 +57,9 @@ def create_user(user_data: dict):
         # Hash da senha
         hashed_password = pwd_context.hash(user_data["password"])
 
+        # Cria usuário com UUID
         db_user = User(
+            id=str(uuid4()),
             email=user_data["email"],
             password=hashed_password,
             name=user_data.get("name"),
@@ -64,7 +77,6 @@ def create_user(user_data: dict):
     except IntegrityError as e:
         db.rollback()
         error_message = str(e.orig)
-
         if "users_email_key" in error_message:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -82,7 +94,6 @@ def create_user(user_data: dict):
             )
 
     except HTTPException:
-        # Propaga as exceções HTTP sem alterar o status
         raise
 
     except Exception as e:
@@ -96,18 +107,7 @@ def create_user(user_data: dict):
         db.close()
 
 
-def get_all_users(db: Session):
-    return db.query(User).all()
-
-
-def get_user_by_id(db: Session, user_id: int) -> User:
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return user
-
-
-def update_user(db: Session, user_id: int, update_data: dict) -> User:
+def update_user(db: Session, user_id: str, update_data: dict) -> User:
     user = get_user_by_id(db, user_id)
     for key, value in update_data.items():
         setattr(user, key, value)
@@ -116,13 +116,16 @@ def update_user(db: Session, user_id: int, update_data: dict) -> User:
     return user
 
 
-def change_password(db: Session, user_id: int, new_password: str):
+def change_password(db: Session, user_id: str, new_password: str):
     user = get_user_by_id(db, user_id)
     user.password = hash_password(new_password)
     db.commit()
     return {"message": "Senha alterada com sucesso"}
 
 
+# ------------------------
+# Recuperação de senha
+# ------------------------
 def create_password_reset_token(user: User) -> str:
     expire = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user.id), "exp": expire}
@@ -161,12 +164,10 @@ def send_reset_email(user: User, frontend_host: str):
     )
 
     if response.status_code >= 400:
-
         try:
             error_message = response.json()
         except Exception:
             error_message = response.text
-
         raise HTTPException(
             status_code=500,
             detail=f"Falha ao enviar e-mail de recuperação: {error_message}",

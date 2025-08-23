@@ -14,13 +14,13 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 120))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7))  # 7 dias padrão
 
-def create_access_token(user_id: int):
+def create_access_token(user_id: str):
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": str(user_id), "exp": expire, "type": "access"}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(user_id: int):
+def create_refresh_token(user_id: str):
     expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": str(user_id), "exp": expire, "type": "refresh"}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -31,11 +31,9 @@ def verify_access_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "access":
             return None
-        user_id_str = payload.get("sub")
-        if user_id_str is None:
-            return None
-        return int(user_id_str)
-    except (JWTError, ValueError):
+        user_id = payload.get("sub")  # já é string UUID
+        return user_id
+    except JWTError:
         return None
 
 def verify_refresh_token(token: str):
@@ -43,9 +41,7 @@ def verify_refresh_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":
             return None
-        user_id_str = payload.get("sub")
-        if user_id_str is None:
-            return None
-        return int(user_id_str)
-    except (JWTError, ValueError):
+        user_id = payload.get("sub")  # já é string UUID
+        return user_id
+    except JWTError:
         return None

@@ -32,10 +32,10 @@ app.add_middleware(
 app.include_router(auth_routes.router, prefix="/api", tags=["Auth"])
 app.include_router(user_routes.router, prefix="/api", tags=["Usuários"])
 app.include_router(
-    workspaces_routes.router, prefix="/api/workspaces", tags=["Workspaces"]
+    workspaces_routes.router, prefix="/api", tags=["Workspaces"]
 )
-app.include_router(expenses_routes.router, prefix="/api/expenses", tags=["Despesas"])
-app.include_router(tags_routes.router, prefix="/api/tags", tags=["Tags"])
+app.include_router(expenses_routes.router, prefix="/api", tags=["Despesas"])
+app.include_router(tags_routes.router, prefix="/api", tags=["Tags"])
 
 # Endpoint raiz
 @app.get("/")

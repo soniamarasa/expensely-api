@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, ForeignKey, Table
+from sqlalchemy import Column, String, ForeignKey, Table, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 
+# Tabela associativa usuários x workspaces
 workspace_users = Table(
     "workspace_users",
     Base.metadata,
@@ -15,10 +16,12 @@ class Workspace(Base):
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
     color = Column(String, nullable=False)
-    type = Column(String, nullable=False)
+    icon = Column(String, nullable=True)        # Novo campo icon
+    type = Column(JSON, nullable=False)         # Agora aceita JSON
 
     user_id = Column(String, ForeignKey("users.id"), nullable=False)  # dono workspace
 
+    # Relacionamentos
     owner = relationship(
         "User", back_populates="owned_workspaces", foreign_keys=[user_id]
     )
@@ -28,5 +31,4 @@ class Workspace(Base):
     )
 
     expenses = relationship("Expense", back_populates="workspace", lazy="joined")
-
     tags = relationship("Tag", back_populates="workspace", lazy="joined")
