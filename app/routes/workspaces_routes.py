@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from jose import JWTError
+import jwt
 from sqlalchemy.orm import Session, joinedload
 from uuid import uuid4
 
+from app.config import ALGORITHM, SECRET_KEY
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Workspace as WorkspaceModel, User as UserModel
@@ -30,7 +33,6 @@ def list_workspaces(
         for w in workspaces
     ]
 
-
 @router.post("", response_model=Workspace, status_code=status.HTTP_201_CREATED)
 def create_workspace(
     data: WorkspaceCreate,
@@ -55,7 +57,7 @@ def update_workspace(
     return Workspace(
         id=workspace.id,
         name=workspace.name,
-        userId=workspace.user_id,
+        userId=workspace.userId,
         color=workspace.color,
         type=workspace.type,
         users=[{"id": u.id, "name": u.name, "email": u.email} for u in workspace.users],
@@ -69,3 +71,28 @@ def delete_workspace(
     current_user: UserModel = Depends(get_current_user),
 ):
     workspaces_service.delete_workspace(workspace_id, current_user, db)
+
+@router.post("/{workspace_id}/invite")
+def invite_user(workspace_id: str, email: str, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+    workspace = workspaces_service.get_workspace_by_id(workspace_id, db)
+    if workspace.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Apenas o dono pode enviar convites")
+    
+    workspaces_service.send_workspace_invite_email(email=email, workspace_id=workspace_id, workspace_name=workspace.name, frontend_host="http://localhost:3000")
+    return {"message": f"Convite enviado para {email}"}
+
+@router.post("/accept-invite/{token}")
+def accept_workspace_invite(token: str, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        workspace_id = payload.get("workspace_id")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado")
+
+    user = db.query(UserModel).filter(UserModel.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    workspaces_service.add_user_to_workspace(user.id, workspace_id, db)
+    return {"message": f"{user.email} adicionado ao workspace com sucesso"}

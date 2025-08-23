@@ -34,7 +34,6 @@ class WorkspaceUpdate(BaseModel):
     color: Optional[str]
     icon: Optional[str] = None
     type: Optional[WorkspaceType] = None
-    users: Optional[List[UUID]] = []
 
 
 class Workspace(WorkspaceBase):
